@@ -1,5 +1,5 @@
 #include "cursor.h"
-#include "fb.h"
+#include "framebuffer.h"
 
 static int cx = 100, cy = 100;
 
