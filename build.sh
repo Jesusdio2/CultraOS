@@ -6,7 +6,7 @@ LD="ld -m elf_x86_64"
 CFLAGS="-m64 -ffreestanding -O2 -Wall -Wextra -nostdlib -fno-pic -fno-pie -Isrc/kernel -Isrc/drivers"
 LDFLAGS="-T src/kernel/linker.ld"
 
-# Compilar fuentes del kernel
+# Compilar fuentes del kernel en C
 $CC $CFLAGS -c src/kernel/kmain.c   -o src/kernel/kmain.o
 $CC $CFLAGS -c src/kernel/console.c -o src/kernel/console.o
 $CC $CFLAGS -c src/kernel/string.c  -o src/kernel/string.o
@@ -17,6 +17,9 @@ $CC $CFLAGS -c src/drivers/framebuffer.c -o src/drivers/framebuffer.o
 $CC $CFLAGS -c src/drivers/cursor.c      -o src/drivers/cursor.o
 $CC $CFLAGS -c src/drivers/mouse.c       -o src/drivers/mouse.o
 $CC $CFLAGS -c src/drivers/time.c        -o src/drivers/time.o
+
+# Compilar ensamblador (IDT loader)
+nasm -f elf64 src/kernel/idt.asm -o src/kernel/idt_asm.o
 
 # Enlazar kernel
 $LD $LDFLAGS -o src/kernel.bin src/kernel/*.o src/drivers/*.o
