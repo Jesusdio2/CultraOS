@@ -2,13 +2,11 @@
 #include <stdint.h>
 #include "io.h"
 #include "idt.h"
-#include "keyboard.h"
 #include "mouse.h"
 
 void kmain(void) {
     // Inicializar IDT y controladores
     idt_init();
-    keyboard_init();
     mouse_init();
 
     // Mensaje inicial
