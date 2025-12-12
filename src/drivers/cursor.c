@@ -1,7 +1,7 @@
 #include "cursor.h"
 #include "framebuffer.h"
 #include <stdint.h>
-#include <stddef.h> 
+#include <stddef.h>   // para size_t
 
 typedef struct {
     uint8_t r, g, b, a;
@@ -44,7 +44,6 @@ void cursor_draw(void) {
             int tx = cx + x;
             if (tx < 0 || tx >= (int)fb_width) continue;
             uint32_t px = icon[y][x];
-            // Composición simple: si alpha != 0, pinta
             if ((px >> 24) & 0xFF) row[tx] = px;
         }
     }
