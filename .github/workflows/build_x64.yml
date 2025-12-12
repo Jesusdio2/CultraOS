@@ -1,7 +1,10 @@
-name: Build Kernel
+name: Build OS ISO
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
 
 jobs:
   build:
@@ -14,15 +17,14 @@ jobs:
     - name: Install build dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential nasm qemu-system-x86
+        sudo apt-get install -y build-essential nasm grub-pc-bin grub-common xorriso
 
-    - name: Build kernel
+    - name: Build ISO
       working-directory: src
-      run: |
-        make
+      run: make
 
-    - name: Upload build artifacts
+    - name: Upload ISO artifact
       uses: actions/upload-artifact@v4
       with:
-        name: kernel-build
-        path: src/build/
+        name: os-iso
+        path: src/os.iso
