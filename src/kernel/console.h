@@ -2,6 +2,6 @@
 #ifndef CONSOLE_H
 #define CONSOLE_H
 
-void kputs(const char *s);
+void puts(const char *s);
 
 #endif
