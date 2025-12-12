@@ -1,11 +1,10 @@
 ENTRY(kmain)
 
-SECTIONS
-{
+SECTIONS {
   . = 0x100000;
 
   .text ALIGN(4K) : {
-    *(.multiboot)
+    *(.multiboot)   /* encabezado multiboot2 */
     *(.text*)
   }
 
