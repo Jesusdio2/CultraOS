@@ -1,16 +1,13 @@
-# Compiladores y herramientas
 CC = gcc
 AS = nasm
 LD = ld
 CFLAGS = -m32 -ffreestanding -O2 -Wall -Wextra -nostdlib
 LDFLAGS = -T kernel/linker.ld
 
-# Archivos fuente
 KERNEL_SRC = kernel/kmain.c kernel/kernel.c
 DRIVERS_SRC = drivers/fb.c drivers/cursor.c drivers/mouse.c drivers/time.c
 OBJ = $(KERNEL_SRC:.c=.o) $(DRIVERS_SRC:.c=.o) boot/boot.o
 
-# Targets principales
 all: os.iso
 
 %.o: %.c
