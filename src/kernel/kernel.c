@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include "io.h"
 #include "idt.h"
-#include "mouse.h"
+#include "../drivers/mouse.h"
 
 void kmain(void) {
     // Inicializar IDT y controladores
