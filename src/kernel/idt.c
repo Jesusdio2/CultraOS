@@ -2,9 +2,9 @@
 #include "idt.h"
 
 void idt_init(void) {
-    // TODO: implementar inicialización de la IDT en 64 bits
+    // Stub vacío: más adelante aquí configurarás la IDT real
 }
 
 void idt_set_isr(int vec, void (*handler)(void)) {
-    // TODO: registrar un handler en la tabla de interrupciones
+    // Stub vacío: más adelante registrarás handlers de interrupción
 }
