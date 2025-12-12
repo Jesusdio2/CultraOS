@@ -32,7 +32,9 @@ void mouse_init(void){
 
 void mouse_irq_handler(void){
   // Leer paquete de 3 bytes
-  while(!(inb(MOUSE_STAT) & 0x01)); packet[cycle++] = inb(MOUSE_DATA);
+  while (!(inb(MOUSE_STAT) & 0x01))
+    ; // espera hasta que haya datos
+  packet[cycle++] = inb(MOUSE_DATA);
   if(cycle<3) return;
   cycle=0;
 
