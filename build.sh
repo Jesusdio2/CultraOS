@@ -2,15 +2,15 @@
 set -e
 
 CC="gcc"
-LD="ld"
-CFLAGS="-m32 -ffreestanding -O2 -Wall -Wextra -nostdlib -Isrc/drivers -Isrc/kernel"
+LD="ld -m elf_x86_64"
+CFLAGS="-m64 -ffreestanding -O2 -Wall -Wextra -nostdlib -fno-pic -fno-pie -Isrc/drivers -Isrc/kernel"
 LDFLAGS="-T src/kernel/linker.ld"
 
 # Compilar fuentes del kernel
 $CC $CFLAGS -c src/kernel/kmain.c   -o src/kernel/kmain.o
-$CC $CFLAGS -c src/kernel/kernel.c  -o src/kernel/kernel.o
 $CC $CFLAGS -c src/kernel/console.c -o src/kernel/console.o
 $CC $CFLAGS -c src/kernel/string.c  -o src/kernel/string.o
+$CC $CFLAGS -c src/kernel/idt.c     -o src/kernel/idt.o
 
 # Compilar drivers
 $CC $CFLAGS -c src/drivers/fb.c     -o src/drivers/fb.o
@@ -26,5 +26,5 @@ mkdir -p src/iso/boot/grub
 cp src/kernel.bin src/iso/boot/kernel.bin
 echo 'set timeout=0'  > src/iso/boot/grub/grub.cfg
 echo 'set default=0' >> src/iso/boot/grub/grub.cfg
-echo 'menuentry "CultraCore" { multiboot /boot/kernel.bin }' >> src/iso/boot/grub/grub.cfg
+echo 'menuentry "CultraCore (64-bit)" { multiboot2 /boot/kernel.bin }' >> src/iso/boot/grub/grub.cfg
 grub-mkrescue -o src/os.iso src/iso
