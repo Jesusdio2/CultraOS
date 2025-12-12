@@ -1,3 +1,4 @@
+// src/kernel/multiboot2.h
 #ifndef MULTIBOOT2_H
 #define MULTIBOOT2_H
 
@@ -11,6 +12,6 @@ struct multiboot2_header {
     unsigned int architecture;
     unsigned int header_length;
     unsigned int checksum;
-} __attribute__((section(".multiboot")));
+};
 
 #endif
