@@ -12,15 +12,16 @@ void fb_init(struct multiboot_tag_framebuffer *tag) {
 }
 
 void fb_putpixel(int x, int y, uint32_t color) {
-    uint8_t *row = (uint8_t*)framebuffer + y * fb_pitch;
+    uint8_t *row = (uint8_t*)framebuffer + (size_t)y * fb_pitch;
     uint32_t *px = (uint32_t*)(row + x * 4); // 32 bits por pixel
     *px = color;
 }
 
 void fb_clear(uint32_t color) {
-    for (int y = 0; y < fb_height; y++) {
-        for (int x = 0; x < fb_width; x++) {
-            fb_putpixel(x, y, color);
+    for (uint32_t y = 0; y < fb_height; y++) {
+        uint32_t *row = (uint32_t*)((uint8_t*)framebuffer + (size_t)y * fb_pitch);
+        for (uint32_t x = 0; x < fb_width; x++) {
+            row[x] = color;
         }
     }
 }
