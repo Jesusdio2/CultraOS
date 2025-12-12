@@ -1,3 +1,4 @@
+// src/kernel/multiboot2.c
 #include "multiboot2.h"
 
 struct multiboot2_header mb2_header __attribute__((section(".multiboot"))) = {
