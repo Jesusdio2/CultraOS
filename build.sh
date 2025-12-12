@@ -4,20 +4,25 @@ set -e
 CC="gcc"
 LD="ld"
 CFLAGS="-m32 -ffreestanding -O2 -Wall -Wextra -nostdlib"
-LDFLAGS="-T kernel/linker.ld"
+LDFLAGS="-T src/kernel/linker.ld"
 
-$CC $CFLAGS -c kernel/kmain.c -o kernel/kmain.o
-$CC $CFLAGS -c kernel/kernel.c -o kernel/kernel.o
-$CC $CFLAGS -c drivers/fb.c -o drivers/fb.o
-$CC $CFLAGS -c drivers/cursor.c -o drivers/cursor.o
-$CC $CFLAGS -c drivers/mouse.c -o drivers/mouse.o
-$CC $CFLAGS -c drivers/time.c -o drivers/time.o
+# Compilar fuentes del kernel
+$CC $CFLAGS -c src/kernel/kmain.c -o src/kernel/kmain.o
+$CC $CFLAGS -c src/kernel/kernel.c -o src/kernel/kernel.o
 
-$LD $LDFLAGS -o kernel.bin kernel/*.o drivers/*.o
+# Compilar drivers
+$CC $CFLAGS -c src/drivers/fb.c -o src/drivers/fb.o
+$CC $CFLAGS -c src/drivers/cursor.c -o src/drivers/cursor.o
+$CC $CFLAGS -c src/drivers/mouse.c -o src/drivers/mouse.o
+$CC $CFLAGS -c src/drivers/time.c -o src/drivers/time.o
 
-mkdir -p iso/boot/grub
-cp kernel.bin iso/boot/kernel.bin
-echo 'set timeout=0' > iso/boot/grub/grub.cfg
-echo 'set default=0' >> iso/boot/grub/grub.cfg
-echo 'menuentry "MiOS" { multiboot /boot/kernel.bin }' >> iso/boot/grub/grub.cfg
-grub-mkrescue -o os.iso iso
+# Enlazar kernel
+$LD $LDFLAGS -o src/kernel.bin src/kernel/*.o src/drivers/*.o
+
+# Crear ISO con GRUB
+mkdir -p src/iso/boot/grub
+cp src/kernel.bin src/iso/boot/kernel.bin
+echo 'set timeout=0' > src/iso/boot/grub/grub.cfg
+echo 'set default=0' >> src/iso/boot/grub/grub.cfg
+echo 'menuentry "MiOS" { multiboot /boot/kernel.bin }' >> src/iso/boot/grub/grub.cfg
+grub-mkrescue -o src/os.iso src/iso
