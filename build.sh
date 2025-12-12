@@ -10,7 +10,8 @@ LDFLAGS="-T src/kernel/linker.ld"
 $CC $CFLAGS -c src/kernel/kmain.c      -o src/kernel/kmain.o
 $CC $CFLAGS -c src/kernel/console.c    -o src/kernel/console.o
 $CC $CFLAGS -c src/kernel/string.c     -o src/kernel/string.o
-$CC $CFLAGS -c src/kernel/multiboot2.c -o src/kernel/multiboot2.o   # encabezado multiboot2
+$CC $CFLAGS -c src/kernel/idt.c        -o src/kernel/idt.o        # <-- agregado
+$CC $CFLAGS -c src/kernel/multiboot2.c -o src/kernel/multiboot2.o
 
 # Compilar drivers
 $CC $CFLAGS -c src/drivers/fb.c        -o src/drivers/fb.o
