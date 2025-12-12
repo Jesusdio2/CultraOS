@@ -1,0 +1,26 @@
+#include <stdint.h>
+#include "multiboot2.h"
+
+uint32_t fb_width, fb_height, fb_pitch;
+void *framebuffer;
+
+void fb_init(struct multiboot_tag_framebuffer *tag) {
+    fb_width  = tag->framebuffer_width;
+    fb_height = tag->framebuffer_height;
+    fb_pitch  = tag->framebuffer_pitch;
+    framebuffer = (void*)(uintptr_t)tag->framebuffer_addr;
+}
+
+void fb_putpixel(int x, int y, uint32_t color) {
+    uint8_t *row = (uint8_t*)framebuffer + y * fb_pitch;
+    uint32_t *px = (uint32_t*)(row + x * 4); // 32 bits por pixel
+    *px = color;
+}
+
+void fb_clear(uint32_t color) {
+    for (int y = 0; y < fb_height; y++) {
+        for (int x = 0; x < fb_width; x++) {
+            fb_putpixel(x, y, color);
+        }
+    }
+}
