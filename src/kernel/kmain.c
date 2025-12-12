@@ -2,15 +2,31 @@
 #include "io.h"
 #include "idt.h"
 #include "../drivers/mouse.h"
+#include "../drivers/framebuffer.h"  // tu nuevo driver
 #include "console.h"
+#include "multiboot2.h"
 
-void kmain(void) {
+void kmain(uint32_t magic, uint32_t addr) {
     // Inicializar IDT y controladores
     idt_init();
     mouse_init();
 
-    // Mensaje inicial en VGA usando tu propia puts
+    // Mensaje inicial en consola VGA
     puts("Kernel iniciado en x86_64\n");
+
+    // Detectar framebuffer desde Multiboot2
+    if (magic == MULTIBOOT2_BOOTLOADER_MAGIC) {
+        struct multiboot_tag *tag;
+        for (tag = (struct multiboot_tag*)(addr + 8);
+             tag->type != MULTIBOOT_TAG_TYPE_END;
+             tag = (struct multiboot_tag*)((uint8_t*)tag + ((tag->size + 7) & ~7))) {
+            
+            if (tag->type == MULTIBOOT_TAG_TYPE_FRAMEBUFFER) {
+                fb_init((struct multiboot_tag_framebuffer*)tag);
+                fb_clear(0x000000); // negro
+            }
+        }
+    }
 
     // También puedes escribir directamente en memoria VGA si quieres
     const char *msg = "Hola desde mi kernel en C!\n";
