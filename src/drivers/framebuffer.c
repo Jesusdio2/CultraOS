@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stddef.h>
 #include "multiboot2.h"
 
 uint32_t fb_width, fb_height, fb_pitch;
