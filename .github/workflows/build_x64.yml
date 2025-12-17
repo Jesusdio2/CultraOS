@@ -1,32 +1,52 @@
-name: Build OS ISO
+name: Build Kernel ISO
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ main ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ main ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 120
 
     steps:
-    - name: Checkout repository
+    - name: Checkout source
       uses: actions/checkout@v4
 
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential nasm grub-pc-bin grub-common xorriso mtools
+        sudo apt-get install -y build-essential gcc make binutils bc \
+            flex bison libssl-dev libncurses-dev libelf-dev libdw-dev \
+            dwarves pahole fakeroot rsync zstd ccache clang llvm lld \
+            grub-pc-bin grub-common xorriso
 
-    - name: Make build.sh executable
-      run: chmod +x build.sh
+    - name: Configure kernel
+      run: make O=build defconfig
 
-    - name: Run build script
-      run: ./build.sh
+    - name: Build kernel
+      run: make O=build -j$(nproc) bzImage
+
+    - name: Prepare ISO root
+      run: |
+        mkdir -p iso-root/boot/grub
+        cp build/arch/x86/boot/bzImage iso-root/boot/vmlinuz
+        cat > iso-root/boot/grub/grub.cfg <<'EOF'
+        set timeout=5
+        set default=0
+
+        menuentry "Custom Linux Kernel" {
+            linux /boot/vmlinuz
+        }
+        EOF
+
+    - name: Build ISO
+      run: grub-mkrescue -o custom-kernel.iso iso-root
 
     - name: Upload ISO artifact
       uses: actions/upload-artifact@v4
       with:
-        name: os-iso
-        path: src/os.iso
+        name: kernel-iso
+        path: custom-kernel.iso
