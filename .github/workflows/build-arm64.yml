@@ -5,17 +5,26 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04   # 👈 usar jammy en lugar de ubuntu-latest
+    runs-on: ubuntu-22.04   # 👈 usar jammy
 
     steps:
     - name: Checkout source
       uses: actions/checkout@v4
 
-    - name: Install dependencies
+    - name: Install build dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y build-essential gcc libpng-dev zlib1g-dev cpio curl \
-          grub-common grub-pc-bin grub2-common xorriso mtools
+          autoconf automake bison flex gettext texinfo xorriso mtools git
+
+    - name: Compile GRUB from source (arm64-efi)
+      run: |
+        git clone git://git.savannah.gnu.org/grub.git
+        cd grub
+        ./bootstrap
+        ./configure --with-platform=efi --target=arm64
+        make
+        sudo make install
 
     - name: Download kernel and initramfs from release
       run: |
@@ -57,7 +66,7 @@ jobs:
             initrd /boot/initramfs.img
         }
         EOF
-        # Generar BOOTAA64.EFI directamente con grub-mkimage
+        # Generar BOOTAA64.EFI con grub-mkimage compilado
         grub-mkimage -O arm64-efi -o iso-root/EFI/BOOT/BOOTAA64.EFI \
           -p /boot/grub \
           part_gpt part_msdos fat iso9660 normal chain linux configfile
@@ -72,4 +81,3 @@ jobs:
       with:
         name: CultraOS-iso
         path: CultraOS.iso
-
