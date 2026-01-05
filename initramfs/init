@@ -1,0 +1,17 @@
+#!/bin/sh
+mount -t proc none /proc
+
+# Asegurar /dev y nodos básicos si no hay udev
+[ -d /dev ] || mkdir -p /dev
+[ -d /dev/input ] || mkdir -p /dev/input
+
+# Framebuffer: mayor 29, menor 0
+mknod -m 0666 /dev/fb0 c 29 0 2>/dev/null || true
+
+# Crear varios evdev para localizar el mouse (mayor 13, menor 64+i)
+for i in 0 1 2 3 4 5 6 7; do
+  mknod /dev/input/event$i c 13 $((64 + i)) 2>/dev/null || true
+done
+
+# Ejecutar la UI
+exec /bin/ui
