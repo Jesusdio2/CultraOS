@@ -14,7 +14,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential gcc libpng-dev zlib1g-dev cpio curl grub-common grub-pc-bin grub2-common xorriso mtools
+        sudo apt-get install -y build-essential gcc libpng-dev zlib1g-dev cpio curl grub-common grub-pc-bin grub-efi-arm64-bin xorriso mtools
 
     - name: Download kernel and initramfs from release
       run: |
@@ -42,9 +42,10 @@ jobs:
         chmod +x initramfs/init
         cd initramfs && find . | cpio -o -H newc | gzip > ../initramfs.img
 
-    - name: Create ISO (BIOS + UEFI)
+    - name: Create ISO with UEFI bootloader
       run: |
         mkdir -p iso-root/boot/grub
+        mkdir -p iso-root/EFI/BOOT
         cp kernel/Image iso-root/boot/
         cp initramfs.img iso-root/boot/
         cat > iso-root/boot/grub/grub.cfg << 'EOF'
@@ -55,7 +56,18 @@ jobs:
             initrd /boot/initramfs.img
         }
         EOF
-        grub-mkrescue -o CultraOS.iso iso-root
+        grub-install \
+          --target=arm64-efi \
+          --efi-directory=iso-root/EFI \
+          --boot-directory=iso-root/boot \
+          --removable \
+          --no-nvram
+        cp iso-root/boot/grub/grub.efi iso-root/EFI/BOOT/BOOTAA64.EFI
+        xorriso -as mkisofs \
+          -R -J -joliet -l \
+          -efi-boot-part --efi-boot-image --protective-msdos-label \
+          -o CultraOS.iso \
+          iso-root
 
     - name: Upload ISO
       uses: actions/upload-artifact@v4
