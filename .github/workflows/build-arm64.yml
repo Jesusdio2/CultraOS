@@ -14,7 +14,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential gcc libpng-dev zlib1g-dev cpio curl grub-common grub-efi-arm64-bin xorriso
+        sudo apt-get install -y build-essential gcc libpng-dev zlib1g-dev cpio curl grub-common grub-efi-arm64 grub-pc-bin xorriso
 
     - name: Download kernel and initramfs from release
       run: |
