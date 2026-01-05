@@ -5,7 +5,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04   # 👈 usar jammy en lugar de ubuntu-latest
 
     steps:
     - name: Checkout source
@@ -14,7 +14,8 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential gcc libpng-dev zlib1g-dev cpio curl grub-common grub-pc-bin grub2-common xorriso mtools
+        sudo apt-get install -y build-essential gcc libpng-dev zlib1g-dev cpio curl \
+          grub-common grub-pc-bin grub2-common grub-efi-arm64-bin xorriso mtools
 
     - name: Download kernel and initramfs from release
       run: |
