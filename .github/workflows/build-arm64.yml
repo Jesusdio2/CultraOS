@@ -1,0 +1,51 @@
+name: Build UI with released kernel
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout source
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential gcc make libpng-dev zlib1g-dev cpio
+
+    - name: Download kernel and initramfs from release
+      run: |
+        mkdir kernel
+        curl -L -o kernel/Image https://github.com/Jesusdio2/CultraOS/releases/download/Dev0/Image
+        curl -L -o kernel/initramfs.img https://github.com/Jesusdio2/CultraOS/releases/download/Dev0/initramfs.img
+
+    - name: Build UI
+      run: |
+        make -C src
+        mkdir -p initramfs/{bin,etc,proc,sys,dev,input}
+        cp src/ui initramfs/bin/
+        cp src/pointer.png initramfs/
+        cat > initramfs/init << 'EOF'
+        #!/bin/sh
+        mount -t proc none /proc
+        [ -d /dev ] || mkdir -p /dev
+        [ -d /dev/input ] || mkdir -p /dev/input
+        mknod -m 0666 /dev/fb0 c 29 0 2>/dev/null || true
+        for i in 0 1 2 3 4 5 6 7; do
+          mknod /dev/input/event$i c 13 $((64 + i)) 2>/dev/null || true
+        done
+        exec /bin/ui
+        EOF
+        chmod +x initramfs/init
+        cd initramfs && find . | cpio -o -H newc | gzip > ../initramfs.img
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: os-build
+        path: |
+          kernel/Image
+          initramfs.img
