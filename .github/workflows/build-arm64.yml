@@ -14,7 +14,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential gcc make libpng-dev zlib1g-dev cpio
+        sudo apt-get install -y build-essential gcc libpng-dev zlib1g-dev cpio curl
 
     - name: Download kernel and initramfs from release
       run: |
@@ -22,10 +22,10 @@ jobs:
         curl -L -o kernel/Image https://github.com/Jesusdio2/CultraOS/releases/download/Dev0/Image
         curl -L -o kernel/initramfs.img https://github.com/Jesusdio2/CultraOS/releases/download/Dev0/initramfs.img
 
-    - name: Build UI
+    - name: Build UI and pack initramfs
       run: |
-        make -C src
-        mkdir -p initramfs/{bin,etc,proc,sys,dev,input}
+        gcc -O2 -Wall -Wextra src/main.c -o src/ui -lpng -lz
+        mkdir -p initramfs/{bin,etc,proc,sys,dev/input}
         cp src/ui initramfs/bin/
         cp src/pointer.png initramfs/
         cat > initramfs/init << 'EOF'
