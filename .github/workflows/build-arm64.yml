@@ -55,8 +55,7 @@ jobs:
             initrd /boot/initramfs.img
         }
         EOF
-        grub-mkrescue -o CultraOS.iso iso-root \
-          --modules="part_gpt part_msdos fat iso9660 biosdisk efi_gop efi_uga"
+        grub-mkrescue -o CultraOS.iso iso-root
 
     - name: Upload ISO
       uses: actions/upload-artifact@v4
