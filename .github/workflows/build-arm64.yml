@@ -42,7 +42,7 @@ jobs:
         chmod +x initramfs/init
         cd initramfs && find . | cpio -o -H newc | gzip > ../initramfs.img
 
-    - name: Create ISO
+    - name: Create ISO (BIOS + UEFI)
       run: |
         mkdir -p iso-root/boot/grub
         cp kernel/Image iso-root/boot/
@@ -55,7 +55,8 @@ jobs:
             initrd /boot/initramfs.img
         }
         EOF
-        grub-mkrescue -o CultraOS.iso iso-root
+        grub-mkrescue -o CultraOS.iso iso-root \
+          --modules="part_gpt part_msdos fat iso9660 biosdisk efi_gop efi_uga"
 
     - name: Upload ISO
       uses: actions/upload-artifact@v4
