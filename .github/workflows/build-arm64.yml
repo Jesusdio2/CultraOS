@@ -11,16 +11,11 @@ jobs:
     - name: Checkout source
       uses: actions/checkout@v4
 
-    - name: Install dependencies (with fallback)
+    - name: Install dependencies
       run: |
-        set -e
         sudo apt-get update
-        if ! sudo apt-get install -y build-essential gcc libpng-dev zlib1g-dev cpio curl \
-          grub-common grub-pc-bin grub2-common grub-efi-arm64 xorriso mtools; then
-          echo "Paquete grub-efi-arm64 no disponible, usando mirror..."
-          curl -O http://azure.archive.ubuntu.com/ubuntu/pool/main/g/grub2/grub-efi-arm64_2.06-2ubuntu14_arm64.deb
-          sudo apt-get install -y ./grub-efi-arm64_*.deb
-        fi
+        sudo apt-get install -y build-essential gcc libpng-dev zlib1g-dev cpio curl \
+          grub-common grub-pc-bin grub2-common xorriso mtools
 
     - name: Download kernel and initramfs from release
       run: |
@@ -62,13 +57,10 @@ jobs:
             initrd /boot/initramfs.img
         }
         EOF
-        grub-install \
-          --target=arm64-efi \
-          --efi-directory=iso-root/EFI \
-          --boot-directory=iso-root/boot \
-          --removable \
-          --no-nvram
-        cp iso-root/boot/grub/grub.efi iso-root/EFI/BOOT/BOOTAA64.EFI
+        # Generar BOOTAA64.EFI directamente con grub-mkimage
+        grub-mkimage -O arm64-efi -o iso-root/EFI/BOOT/BOOTAA64.EFI \
+          -p /boot/grub \
+          part_gpt part_msdos fat iso9660 normal chain linux configfile
         xorriso -as mkisofs \
           -R -J -joliet -l \
           -efi-boot-part --efi-boot-image --protective-msdos-label \
