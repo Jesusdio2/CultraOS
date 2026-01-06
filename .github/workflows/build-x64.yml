@@ -15,16 +15,7 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y build-essential gcc libpng-dev zlib1g-dev cpio curl \
-          autoconf automake bison flex gettext texinfo autopoint xorriso mtools git
-
-    - name: Compile GRUB from source (x86_64-efi)
-      run: |
-        curl -L -o grub-2.12.tar.xz https://ftp.gnu.org/gnu/grub/grub-2.12.tar.xz
-        tar -xf grub-2.12.tar.xz
-        cd grub-2.12
-        ./configure --with-platform=efi --target=x86_64
-        make -j$(nproc)
-        sudo make install
+          grub-pc-bin grub-efi-amd64-bin xorriso mtools
 
     - name: Download kernel and initramfs from release
       run: |
@@ -52,7 +43,7 @@ jobs:
         chmod +x initramfs/init
         cd initramfs && find . | cpio -o -H newc | gzip > ../initramfs.img
 
-    - name: Create ISO with UEFI bootloader
+    - name: Create ISO with BIOS + UEFI bootloader
       run: |
         mkdir -p iso-root/boot/grub
         mkdir -p iso-root/EFI/BOOT
@@ -66,13 +57,26 @@ jobs:
             initrd /boot/initramfs.img
         }
         EOF
-        # Generar BOOTX64.EFI con grub-mkimage compilado
+
+        # BIOS boot image (eltorito.img)
+        grub-mkimage -O i386-pc -o bios.img \
+          -p /boot/grub \
+          iso9660 biosdisk part_msdos ext2 normal chain linux configfile
+
+        # UEFI boot image (BOOTX64.EFI)
         grub-mkimage -O x86_64-efi -o iso-root/EFI/BOOT/BOOTX64.EFI \
           -p /boot/grub \
           part_gpt part_msdos fat iso9660 normal chain linux configfile
+
+        # Crear ISO híbrido BIOS+UEFI
         xorriso -as mkisofs \
           -R -J -joliet -l \
-          -efi-boot-part --efi-boot-image --protective-msdos-label \
+          -b bios.img \
+          -no-emul-boot -boot-load-size 4 -boot-info-table \
+          -eltorito-alt-boot \
+          -e EFI/BOOT/BOOTX64.EFI \
+          -no-emul-boot \
+          -isohybrid-mbr /usr/lib/ISOLINUX/isohdpfx.bin \
           -o CultraOS-x64.iso \
           iso-root
 
