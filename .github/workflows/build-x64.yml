@@ -15,7 +15,7 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y build-essential gcc libpng-dev zlib1g-dev cpio curl \
-          grub-pc-bin grub-efi-amd64-bin xorriso mtools isolinux syslinux-common
+          grub-pc-bin grub-efi-amd64-bin xorriso mtools
 
     - name: Download kernel and initramfs from release
       run: |
@@ -58,7 +58,7 @@ jobs:
         }
         EOF
 
-        # BIOS boot image (eltorito.img) dentro de iso-root
+        # BIOS boot image (GRUB core image)
         grub-mkimage -O i386-pc -o iso-root/bios.img \
           -p /boot/grub \
           iso9660 biosdisk part_msdos ext2 normal chain linux configfile
@@ -68,7 +68,7 @@ jobs:
           -p /boot/grub \
           part_gpt part_msdos fat iso9660 normal chain linux configfile
 
-        # Crear ISO híbrido BIOS+UEFI usando isolinux MBR
+        # Crear ISO híbrido BIOS+UEFI usando solo GRUB
         xorriso -as mkisofs \
           -R -J -joliet -l \
           -b bios.img \
@@ -76,7 +76,6 @@ jobs:
           -eltorito-alt-boot \
           -e EFI/BOOT/BOOTX64.EFI \
           -no-emul-boot \
-          -isohybrid-mbr /usr/lib/ISOLINUX/isohdpfx.bin \
           -o CultraOS-x64.iso \
           iso-root
 
