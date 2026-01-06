@@ -52,7 +52,7 @@ jobs:
         chmod +x initramfs/init
         cd initramfs && find . | cpio -o -H newc | gzip > ../initramfs.img
 
-    - name: Create ISO with UEFI bootloader
+    - name: Create ISO with ARM64 UEFI bootloader
       run: |
         mkdir -p iso-root/boot/grub
         mkdir -p iso-root/EFI/BOOT
@@ -61,23 +61,26 @@ jobs:
         cat > iso-root/boot/grub/grub.cfg << 'EOF'
         set timeout=0
         set default=0
-        menuentry "CultraOS" {
+        menuentry "CultraOS (ARM64)" {
             linux /boot/Image
             initrd /boot/initramfs.img
         }
         EOF
+
         # Generar BOOTAA64.EFI con grub-mkimage compilado
         grub-mkimage -O arm64-efi -o iso-root/EFI/BOOT/BOOTAA64.EFI \
           -p /boot/grub \
           part_gpt part_msdos fat iso9660 normal chain linux configfile
+
+        # Crear ISO híbrido con partición EFI
         xorriso -as mkisofs \
           -R -J -joliet -l \
           -efi-boot-part --efi-boot-image --protective-msdos-label \
-          -o CultraOS.iso \
+          -o CultraOS-arm64.iso \
           iso-root
 
     - name: Upload ISO
       uses: actions/upload-artifact@v4
       with:
-        name: CultraOS-iso
-        path: CultraOS.iso
+        name: CultraOS-iso-arm64
+        path: CultraOS-arm64.iso
