@@ -29,8 +29,8 @@ jobs:
     - name: Download kernel and initramfs from release
       run: |
         mkdir kernel
-        curl -L -o kernel/bzImage https://github.com/Jesusdio2/CultraOS/releases/download/Dev0/Image
-        curl -L -o kernel/initramfs.img https://github.com/Jesusdio2/CultraOS/releases/download/Dev0/initramfs.img
+        curl -L -o kernel/bzImage https://github.com/Jesusdio2/CultraOS/releases/download/Dev1/Image
+        curl -L -o kernel/initramfs.img https://github.com/Jesusdio2/CultraOS/releases/download/Dev1/initramfs.img
 
     - name: Build UI and pack initramfs
       run: |
