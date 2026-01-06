@@ -15,7 +15,7 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y build-essential gcc libpng-dev zlib1g-dev cpio curl \
-          autoconf automake bison flex gettext texinfo xorriso mtools git
+          autoconf automake bison flex gettext texinfo autopoint xorriso mtools git
 
     - name: Compile GRUB from source (arm64-efi)
       run: |
