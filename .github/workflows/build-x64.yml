@@ -1,0 +1,83 @@
+name: Build ISO x64
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04   # 👈 usar jammy
+
+    steps:
+    - name: Checkout source
+      uses: actions/checkout@v4
+
+    - name: Install build dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential gcc libpng-dev zlib1g-dev cpio curl \
+          autoconf automake bison flex gettext texinfo autopoint xorriso mtools git
+
+    - name: Compile GRUB from source (x86_64-efi)
+      run: |
+        curl -L -o grub-2.12.tar.xz https://ftp.gnu.org/gnu/grub/grub-2.12.tar.xz
+        tar -xf grub-2.12.tar.xz
+        cd grub-2.12
+        ./configure --with-platform=efi --target=x86_64
+        make -j$(nproc)
+        sudo make install
+
+    - name: Download kernel and initramfs from release
+      run: |
+        mkdir kernel
+        curl -L -o kernel/bzImage https://github.com/Jesusdio2/CultraOS/releases/download/Dev0/Image
+        curl -L -o kernel/initramfs.img https://github.com/Jesusdio2/CultraOS/releases/download/Dev0/initramfs.img
+
+    - name: Build UI and pack initramfs
+      run: |
+        gcc -O2 -Wall -Wextra src/main.c -o src/ui -lpng -lz
+        mkdir -p initramfs/{bin,etc,proc,sys,dev/input}
+        cp src/ui initramfs/bin/
+        cp src/pointer.png initramfs/
+        cat > initramfs/init << 'EOF'
+        #!/bin/sh
+        mount -t proc none /proc
+        [ -d /dev ] || mkdir -p /dev
+        [ -d /dev/input ] || mkdir -p /dev/input
+        mknod -m 0666 /dev/fb0 c 29 0 2>/dev/null || true
+        for i in 0 1 2 3 4 5 6 7; do
+          mknod /dev/input/event$i c 13 $((64 + i)) 2>/dev/null || true
+        done
+        exec /bin/ui
+        EOF
+        chmod +x initramfs/init
+        cd initramfs && find . | cpio -o -H newc | gzip > ../initramfs.img
+
+    - name: Create ISO with UEFI bootloader
+      run: |
+        mkdir -p iso-root/boot/grub
+        mkdir -p iso-root/EFI/BOOT
+        cp kernel/bzImage iso-root/boot/
+        cp initramfs.img iso-root/boot/
+        cat > iso-root/boot/grub/grub.cfg << 'EOF'
+        set timeout=0
+        set default=0
+        menuentry "CultraOS" {
+            linux /boot/bzImage
+            initrd /boot/initramfs.img
+        }
+        EOF
+        # Generar BOOTX64.EFI con grub-mkimage compilado
+        grub-mkimage -O x86_64-efi -o iso-root/EFI/BOOT/BOOTX64.EFI \
+          -p /boot/grub \
+          part_gpt part_msdos fat iso9660 normal chain linux configfile
+        xorriso -as mkisofs \
+          -R -J -joliet -l \
+          -efi-boot-part --efi-boot-image --protective-msdos-label \
+          -o CultraOS-x64.iso \
+          iso-root
+
+    - name: Upload ISO
+      uses: actions/upload-artifact@v4
+      with:
+        name: CultraOS-iso-x64
+        path: CultraOS-x64.iso
