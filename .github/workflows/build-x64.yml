@@ -58,8 +58,8 @@ jobs:
         }
         EOF
 
-        # BIOS boot image (eltorito.img)
-        grub-mkimage -O i386-pc -o bios.img \
+        # BIOS boot image (eltorito.img) dentro de iso-root
+        grub-mkimage -O i386-pc -o iso-root/bios.img \
           -p /boot/grub \
           iso9660 biosdisk part_msdos ext2 normal chain linux configfile
 
