@@ -15,7 +15,7 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y build-essential gcc libpng-dev zlib1g-dev cpio curl \
-          grub-pc-bin grub-efi-amd64-bin xorriso mtools
+          grub-pc-bin grub-efi-amd64-bin xorriso mtools isolinux syslinux-common
 
     - name: Download kernel and initramfs from release
       run: |
@@ -68,7 +68,7 @@ jobs:
           -p /boot/grub \
           part_gpt part_msdos fat iso9660 normal chain linux configfile
 
-        # Crear ISO híbrido BIOS+UEFI
+        # Crear ISO híbrido BIOS+UEFI usando isolinux MBR
         xorriso -as mkisofs \
           -R -J -joliet -l \
           -b bios.img \
