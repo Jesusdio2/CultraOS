@@ -5,7 +5,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04   # 👈 usar jammy
+    runs-on: ubuntu-22.04-arm64   # 👈 ahora el runner es ARM64
 
     steps:
     - name: Checkout source
@@ -15,7 +15,7 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y build-essential gcc libpng-dev zlib1g-dev cpio curl \
-          xorriso mtools grub-efi-arm64-bin gcc-aarch64-linux-gnu
+          xorriso mtools grub-efi-arm64-bin
 
     - name: Download kernel and initramfs from release
       run: |
@@ -23,9 +23,9 @@ jobs:
         curl -L -o kernel/Image https://github.com/Jesusdio2/CultraOS/releases/download/Dev0/Image
         curl -L -o kernel/initramfs.img https://github.com/Jesusdio2/CultraOS/releases/download/Dev0/initramfs.img
 
-    - name: Build UI and pack initramfs (ARM64)
+    - name: Build UI and pack initramfs
       run: |
-        aarch64-linux-gnu-gcc -O2 -Wall -Wextra src/main.c -o src/ui -lpng -lz
+        gcc -O2 -Wall -Wextra src/main.c -o src/ui -lpng -lz
         mkdir -p initramfs/{bin,etc,proc,sys,dev/input}
         cp src/ui initramfs/bin/
         cp src/pointer.png initramfs/
@@ -58,7 +58,7 @@ jobs:
         }
         EOF
 
-        # Generar BOOTAA64.EFI con grub-mkimage (ya instalado)
+        # Generar BOOTAA64.EFI con grub-mkimage (ya disponible en el runner ARM64)
         grub-mkimage -O arm64-efi -o iso-root/EFI/BOOT/BOOTAA64.EFI \
           -p /boot/grub \
           part_gpt part_msdos fat iso9660 normal chain linux configfile
