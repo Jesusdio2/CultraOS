@@ -18,13 +18,13 @@ jobs:
           autoconf automake bison flex gettext texinfo autopoint autoconf-archive \
           xorriso mtools git gcc-aarch64-linux-gnu
 
-    - name: Compile GRUB from source (arm64-efi)
+    - name: Compile GRUB from source (arm64-efi, stable 2.06)
       run: |
-        git clone git://git.savannah.gnu.org/grub.git
+        git clone --branch grub-2.06 https://git.savannah.gnu.org/git/grub.git
         cd grub
         ./bootstrap
         ./configure --with-platform=efi --target=arm64
-        make
+        make CFLAGS="-Wno-error"
         sudo make install
 
     - name: Download kernel and initramfs from release
