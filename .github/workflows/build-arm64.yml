@@ -79,7 +79,7 @@ jobs:
           iso-root
 
     - name: Upload ISO
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: CultraOS-iso-arm64
         path: CultraOS-arm64.iso
