@@ -5,7 +5,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04-arm64   # 👈 ahora el runner es ARM64
+    runs-on: ubuntu-22.04   # 👈 runner x64, siempre disponible
 
     steps:
     - name: Checkout source
@@ -15,7 +15,17 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y build-essential gcc libpng-dev zlib1g-dev cpio curl \
-          xorriso mtools grub-efi-arm64-bin
+          autoconf automake bison flex gettext texinfo autopoint autoconf-archive \
+          xorriso mtools git gcc-aarch64-linux-gnu
+
+    - name: Compile GRUB from source (arm64-efi)
+      run: |
+        git clone git://git.savannah.gnu.org/grub.git
+        cd grub
+        ./bootstrap
+        ./configure --with-platform=efi --target=arm64
+        make
+        sudo make install
 
     - name: Download kernel and initramfs from release
       run: |
@@ -23,9 +33,9 @@ jobs:
         curl -L -o kernel/Image https://github.com/Jesusdio2/CultraOS/releases/download/Dev0/Image
         curl -L -o kernel/initramfs.img https://github.com/Jesusdio2/CultraOS/releases/download/Dev0/initramfs.img
 
-    - name: Build UI and pack initramfs
+    - name: Build UI and pack initramfs (ARM64)
       run: |
-        gcc -O2 -Wall -Wextra src/main.c -o src/ui -lpng -lz
+        aarch64-linux-gnu-gcc -O2 -Wall -Wextra src/main.c -o src/ui -lpng -lz
         mkdir -p initramfs/{bin,etc,proc,sys,dev/input}
         cp src/ui initramfs/bin/
         cp src/pointer.png initramfs/
@@ -58,12 +68,10 @@ jobs:
         }
         EOF
 
-        # Generar BOOTAA64.EFI con grub-mkimage (ya disponible en el runner ARM64)
         grub-mkimage -O arm64-efi -o iso-root/EFI/BOOT/BOOTAA64.EFI \
           -p /boot/grub \
           part_gpt part_msdos fat iso9660 normal chain linux configfile
 
-        # Crear ISO híbrido con partición EFI
         xorriso -as mkisofs \
           -R -J -joliet -l \
           -efi-boot-part --efi-boot-image --protective-msdos-label \
