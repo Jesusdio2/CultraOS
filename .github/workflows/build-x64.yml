@@ -38,7 +38,7 @@ jobs:
         for i in 0 1 2 3 4 5 6 7; do
           mknod /dev/input/event$i c 13 $((64 + i)) 2>/dev/null || true
         done
-        # Centrar puntero (ejemplo: tu binario ui debe leer /dev/input/eventX)
+        # Aquí tu binario ui debería inicializar el puntero en el centro
         exec /bin/ui
         EOF
         chmod +x initramfs/init
@@ -79,17 +79,16 @@ jobs:
 
     - name: Run QEMU and capture framebuffer
       run: |
-        # Arrancar QEMU en modo gráfico y capturar pantalla
+        # Ejecutar QEMU con monitor y enviar comandos
+        (echo "screendump qemu.ppm"; sleep 1; echo "quit") | \
         qemu-system-x86_64 \
           -cdrom CultraOS-x64.iso \
           -m 512 \
           -boot d \
           -display sdl \
           -no-reboot \
-          -serial mon:stdio \
           -device VGA \
-          -screendump qemu.ppm &
-        sleep 10
+          -monitor stdio
         # Convertir captura a PNG
         convert qemu.ppm qemu.png
 
