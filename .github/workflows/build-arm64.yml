@@ -15,7 +15,7 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y build-essential gcc libpng-dev zlib1g-dev cpio curl \
-          xorriso mtools git gcc-aarch64-linux-gnu grub-efi-arm64-bin
+          xorriso mtools git gcc-aarch64-linux-gnu grub-efi-arm64-cross
 
     - name: Download kernel and initramfs from release
       run: |
