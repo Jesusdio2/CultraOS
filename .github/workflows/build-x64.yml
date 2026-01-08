@@ -15,7 +15,7 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y build-essential gcc libpng-dev zlib1g-dev cpio curl \
-          grub-pc-bin grub-efi-amd64-bin xorriso mtools qemu-system-x86 imagemagick
+          grub-pc-bin grub-efi-amd64-bin xorriso mtools qemu-system-x86 imagemagick xvfb
 
     - name: Download kernel and initramfs from release
       run: |
@@ -79,16 +79,17 @@ jobs:
 
     - name: Run QEMU and capture framebuffer
       run: |
-        # Ejecutar QEMU con monitor y enviar comandos
-        (echo "screendump qemu.ppm"; sleep 1; echo "quit") | \
-        qemu-system-x86_64 \
+        # Ejecutar QEMU dentro de un servidor X virtual
+        xvfb-run -a qemu-system-x86_64 \
           -cdrom CultraOS-x64.iso \
           -m 512 \
           -boot d \
-          -display sdl \
-          -no-reboot \
           -device VGA \
-          -monitor stdio
+          -no-reboot \
+          -monitor stdio <<EOF
+        screendump qemu.ppm
+        quit
+        EOF
         # Convertir captura a PNG
         convert qemu.ppm qemu.png
 
