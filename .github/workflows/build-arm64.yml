@@ -5,7 +5,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04   # Runner x64, siempre disponible
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Checkout source
@@ -15,7 +15,18 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y build-essential gcc libpng-dev zlib1g-dev cpio curl \
-          xorriso mtools git gcc-aarch64-linux-gnu grub-efi-arm64-cross
+          autoconf automake bison flex gettext texinfo autopoint autoconf-archive \
+          xorriso mtools git gcc-aarch64-linux-gnu
+
+    - name: Compile GRUB from source (arm64-efi, stable 2.06)
+      run: |
+        git clone --branch grub-2.06 https://git.savannah.gnu.org/git/grub.git
+        cd grub
+        ./bootstrap
+        ./configure --with-platform=efi --target=arm64
+        make CFLAGS="-Wno-error"
+        # No sudo make install, usamos el binario local
+        cp grub-mkimage ../grub-mkimage-arm64
 
     - name: Download kernel and initramfs from release
       run: |
@@ -58,7 +69,7 @@ jobs:
         }
         EOF
 
-        grub-mkimage -O arm64-efi -o iso-root/EFI/BOOT/BOOTAA64.EFI \
+        ./grub-mkimage-arm64 -O arm64-efi -o iso-root/EFI/BOOT/BOOTAA64.EFI \
           -p /boot/grub \
           part_gpt part_msdos fat iso9660 normal chain linux configfile
 
