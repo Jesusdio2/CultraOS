@@ -1,11 +1,11 @@
-name: Build ISO x64
+name: Build ISO x64 + QEMU Screenshot
 
 on:
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04   # 👈 usar jammy
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Checkout source
@@ -15,7 +15,7 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y build-essential gcc libpng-dev zlib1g-dev cpio curl \
-          grub-pc-bin grub-efi-amd64-bin xorriso mtools
+          grub-pc-bin grub-efi-amd64-bin xorriso mtools qemu-system-x86 imagemagick
 
     - name: Download kernel and initramfs from release
       run: |
@@ -38,6 +38,7 @@ jobs:
         for i in 0 1 2 3 4 5 6 7; do
           mknod /dev/input/event$i c 13 $((64 + i)) 2>/dev/null || true
         done
+        # Centrar puntero (ejemplo: tu binario ui debe leer /dev/input/eventX)
         exec /bin/ui
         EOF
         chmod +x initramfs/init
@@ -58,17 +59,14 @@ jobs:
         }
         EOF
 
-        # BIOS boot image (GRUB core image)
         grub-mkimage -O i386-pc -o iso-root/bios.img \
           -p /boot/grub \
           iso9660 biosdisk part_msdos ext2 normal chain linux configfile
 
-        # UEFI boot image (BOOTX64.EFI)
         grub-mkimage -O x86_64-efi -o iso-root/EFI/BOOT/BOOTX64.EFI \
           -p /boot/grub \
           part_gpt part_msdos fat iso9660 normal chain linux configfile
 
-        # Crear ISO híbrido BIOS+UEFI usando solo GRUB
         xorriso -as mkisofs \
           -R -J -joliet -l \
           -b bios.img \
@@ -79,8 +77,26 @@ jobs:
           -o CultraOS-x64.iso \
           iso-root
 
-    - name: Upload ISO
+    - name: Run QEMU and capture framebuffer
+      run: |
+        # Arrancar QEMU en modo gráfico y capturar pantalla
+        qemu-system-x86_64 \
+          -cdrom CultraOS-x64.iso \
+          -m 512 \
+          -boot d \
+          -display sdl \
+          -no-reboot \
+          -serial mon:stdio \
+          -device VGA \
+          -screendump qemu.ppm &
+        sleep 10
+        # Convertir captura a PNG
+        convert qemu.ppm qemu.png
+
+    - name: Upload artifacts
       uses: actions/upload-artifact@v6
       with:
-        name: CultraOS-iso-x64
-        path: CultraOS-x64.iso
+        name: CultraOS-build
+        path: |
+          CultraOS-x64.iso
+          qemu.png
