@@ -5,27 +5,17 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04   # 👈 runner x64, siempre disponible
+    runs-on: ubuntu-22.04   # Runner x64, siempre disponible
 
     steps:
     - name: Checkout source
-      uses: actions/checkout@v6
+      uses: actions/checkout@v4
 
     - name: Install build dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y build-essential gcc libpng-dev zlib1g-dev cpio curl \
-          autoconf automake bison flex gettext texinfo autopoint autoconf-archive \
-          xorriso mtools git gcc-aarch64-linux-gnu
-
-    - name: Compile GRUB from source (arm64-efi, stable 2.06)
-      run: |
-        git clone --branch grub-2.06 https://git.savannah.gnu.org/git/grub.git
-        cd grub
-        ./bootstrap
-        ./configure --with-platform=efi --target=arm64
-        make CFLAGS="-Wno-error"
-        sudo make install
+          xorriso mtools git gcc-aarch64-linux-gnu grub-efi-arm64-bin
 
     - name: Download kernel and initramfs from release
       run: |
@@ -74,12 +64,14 @@ jobs:
 
         xorriso -as mkisofs \
           -R -J -joliet -l \
+          -e EFI/BOOT/BOOTAA64.EFI \
+          -no-emul-boot \
           -efi-boot-part --efi-boot-image --protective-msdos-label \
           -o CultraOS-arm64.iso \
           iso-root
 
     - name: Upload ISO
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v4
       with:
         name: CultraOS-iso-arm64
         path: CultraOS-arm64.iso
