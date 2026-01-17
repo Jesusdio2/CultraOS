@@ -38,7 +38,6 @@ jobs:
         for i in 0 1 2 3 4 5 6 7; do
           mknod /dev/input/event$i c 13 $((64 + i)) 2>/dev/null || true
         done
-        # Aquí tu binario ui debería inicializar el puntero en el centro
         exec /bin/ui
         EOF
         chmod +x initramfs/init
@@ -79,7 +78,6 @@ jobs:
 
     - name: Run QEMU and capture framebuffer
       run: |
-        # Ejecutar QEMU dentro de un servidor X virtual
         xvfb-run -a qemu-system-x86_64 \
           -cdrom CultraOS-x64.iso \
           -m 512 \
@@ -90,7 +88,6 @@ jobs:
         screendump qemu.ppm
         quit
         EOF
-        # Convertir captura a PNG
         convert qemu.ppm qemu.png
 
     - name: Upload artifacts
