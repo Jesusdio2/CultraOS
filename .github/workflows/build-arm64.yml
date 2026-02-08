@@ -15,16 +15,12 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y build-essential gcc libpng-dev zlib1g-dev cpio curl \
-          xorriso mtools git gcc-aarch64-linux-gnu qemu-system-arm qemu-efi-aarch64
+          xorriso mtools git gcc-aarch64-linux-gnu qemu-system-arm qemu-efi-aarch64 \
+          grub-efi-arm64-bin
 
-    - name: Compile GRUB from source (arm64-efi, stable 2.06)
+    - name: Prepare GRUB mkimage binary
       run: |
-        git clone --branch grub-2.06 https://git.savannah.gnu.org/git/grub.git
-        cd grub
-        ./bootstrap
-        ./configure --with-platform=efi --target=arm64
-        make CFLAGS="-Wno-error"
-        cp grub-mkimage ../grub-mkimage-arm64
+        cp /usr/bin/grub-mkimage grub-mkimage-arm64
 
     - name: Download kernel and initramfs from release
       run: |
@@ -81,7 +77,7 @@ jobs:
           -o CultraOS-arm64.iso \
           iso-root
 
-    - name: Test ISO in QEMU (ARM64)
+    - name: Test ISO in QEMU (ARM64 with framebuffer)
       run: |
         qemu-system-aarch64 \
           -machine virt \
@@ -89,11 +85,11 @@ jobs:
           -m 1024 \
           -bios /usr/share/qemu-efi-aarch64/QEMU_EFI.fd \
           -cdrom CultraOS-arm64.iso \
-          -nographic \
           -serial mon:stdio \
           -no-reboot \
           -boot d \
-          -device ramfb
+          -device virtio-gpu-pci \
+          -display sdl
 
     - name: Upload ISO
       uses: actions/upload-artifact@v6
