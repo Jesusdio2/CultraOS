@@ -1,4 +1,4 @@
-name: Build ISO arm64
+name: Build ISO arm64 + QEMU Test
 
 on:
   workflow_dispatch:
@@ -15,8 +15,7 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y build-essential gcc libpng-dev zlib1g-dev cpio curl \
-          autoconf automake bison flex gettext texinfo autopoint autoconf-archive \
-          xorriso mtools git gcc-aarch64-linux-gnu
+          xorriso mtools git gcc-aarch64-linux-gnu qemu-system-arm qemu-efi-aarch64
 
     - name: Compile GRUB from source (arm64-efi, stable 2.06)
       run: |
@@ -25,7 +24,6 @@ jobs:
         ./bootstrap
         ./configure --with-platform=efi --target=arm64
         make CFLAGS="-Wno-error"
-        # No sudo make install, usamos el binario local
         cp grub-mkimage ../grub-mkimage-arm64
 
     - name: Download kernel and initramfs from release
@@ -36,13 +34,15 @@ jobs:
 
     - name: Build UI and pack initramfs (ARM64)
       run: |
-        aarch64-linux-gnu-gcc -O2 -Wall -Wextra src/main.c -o src/ui -lpng -lz
+        aarch64-linux-gnu-gcc -O2 -Wall -Wextra src/main.c src/RoundRectDrawable.c -o src/ui -lpng -lz
         mkdir -p initramfs/{bin,etc,proc,sys,dev/input}
         cp src/ui initramfs/bin/
         cp src/pointer.png initramfs/
         cat > initramfs/init << 'EOF'
         #!/bin/sh
+        echo "CultraOS initramfs booting..."
         mount -t proc none /proc
+        mount -t sysfs none /sys
         [ -d /dev ] || mkdir -p /dev
         [ -d /dev/input ] || mkdir -p /dev/input
         mknod -m 0666 /dev/fb0 c 29 0 2>/dev/null || true
@@ -80,6 +80,20 @@ jobs:
           -efi-boot-part --efi-boot-image --protective-msdos-label \
           -o CultraOS-arm64.iso \
           iso-root
+
+    - name: Test ISO in QEMU (ARM64)
+      run: |
+        qemu-system-aarch64 \
+          -machine virt \
+          -cpu cortex-a57 \
+          -m 1024 \
+          -bios /usr/share/qemu-efi-aarch64/QEMU_EFI.fd \
+          -cdrom CultraOS-arm64.iso \
+          -nographic \
+          -serial mon:stdio \
+          -no-reboot \
+          -boot d \
+          -device ramfb
 
     - name: Upload ISO
       uses: actions/upload-artifact@v6
