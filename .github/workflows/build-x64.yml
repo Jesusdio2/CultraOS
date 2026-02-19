@@ -1,4 +1,4 @@
-name: Build ISO x64
+name: Build ISO x64 (BIOS isolinux)
 
 on:
   workflow_dispatch:
@@ -14,61 +14,55 @@ jobs:
     - name: Install build dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential gcc libpng-dev zlib1g-dev cpio curl \
-          grub-efi-amd64-bin xorriso mtools
+        sudo apt-get install -y build-essential gcc genisoimage syslinux busybox curl xorriso
 
-    - name: Download kernel and initramfs from release
+    - name: Download kernel (bzImage)
       run: |
-        mkdir kernel
-        curl -L -o kernel/bzImage https://github.com/Jesusdio2/CultraOS/releases/download/Dev1/Image
-        curl -L -o kernel/initramfs.img https://github.com/Jesusdio2/CultraOS/releases/download/Dev1/initramfs.img
+        mkdir -p system/boot
+        curl -L -o system/boot/bzImage https://github.com/Jesusdio2/CultraOS/releases/download/Dev1/Image
 
-    - name: Build UI and pack initramfs
+    - name: Compile static binary (init)
       run: |
-        gcc -O2 -Wall -Wextra src/main.c -o src/ui -lpng -lz
-        mkdir -p initramfs/{bin,etc,proc,sys,dev/input}
-        cp src/ui initramfs/bin/
-        cp src/pointer.png initramfs/
-        cat > initramfs/init << 'EOF'
-        #!/bin/sh
-        mount -t proc none /proc
-        [ -d /dev ] || mkdir -p /dev
-        [ -d /dev/input ] || mkdir -p /dev/input
-        mknod -m 0666 /dev/fb0 c 29 0 2>/dev/null || true
-        for i in 0 1 2 3 4 5 6 7; do
-          mknod /dev/input/event$i c 13 $((64 + i)) 2>/dev/null || true
-        done
-        exec /bin/ui
-        EOF
-        chmod +x initramfs/init
-        cd initramfs && find . | cpio -o -H newc | gzip > ../initramfs.img
+        mkdir -p build
+        gcc -static -O2 -Wall -Wextra src/init.c -o build/init
 
-    - name: Create ISO with UEFI bootloader
+    - name: Generate initramfs
       run: |
-        mkdir -p iso-root/boot/grub
-        mkdir -p iso-root/EFI/BOOT
-        cp kernel/bzImage iso-root/boot/
-        cp initramfs.img iso-root/boot/
-        cat > iso-root/boot/grub/grub.cfg << 'EOF'
-        set timeout=0
-        set default=0
-        menuentry "CultraOS (UEFI)" {
-            linux /boot/bzImage
-            initrd /boot/initramfs.img
-        }
+        mkdir -p initramfs/{bin,sbin,etc,proc,sys,dev}
+        cp build/init initramfs/bin/
+        # añadir busybox y symlinks básicos
+        cp /bin/busybox initramfs/bin/
+        for cmd in sh mount ls; do ln -sf busybox initramfs/bin/$cmd; done
+        cd initramfs && find . | cpio -o -H newc | gzip > ../initramfs.cpio.gz
+
+    - name: Create ISO structure
+      run: |
+        mkdir -p iso_root/boot
+        cp system/boot/bzImage iso_root/boot/
+        cp initramfs.cpio.gz iso_root/boot/
+        cat > iso_root/isolinux.cfg << 'EOF'
+        DEFAULT cultra
+        LABEL cultra
+          KERNEL /boot/bzImage
+          APPEND initrd=/boot/initramfs.cpio.gz console=ttyS0
         EOF
 
-        grub-mkimage -O x86_64-efi -o iso-root/EFI/BOOT/BOOTX64.EFI \
-          -p /boot/grub \
-          part_gpt part_msdos fat iso9660 normal chain linux configfile
+    - name: Get isolinux.bin and ldlinux.c32
+      run: |
+        mkdir syslinux
+        apt-get download syslinux-common
+        dpkg-deb -x *.deb syslinux
+        cp syslinux/usr/lib/syslinux/modules/bios/ldlinux.c32 iso_root/
+        cp syslinux/usr/lib/ISOLINUX/isolinux.bin iso_root/
 
-        xorriso -as mkisofs \
-          -R -J -joliet -l \
-          -e EFI/BOOT/BOOTX64.EFI \
-          -no-emul-boot \
-          -efi-boot-part --efi-boot-image --protective-msdos-label \
+    - name: Create ISO image
+      run: |
+        genisoimage -R -J -l \
+          -b isolinux.bin \
+          -c boot.cat \
+          -no-emul-boot -boot-load-size 4 -boot-info-table \
           -o CultraOS-x64.iso \
-          iso-root
+          iso_root
 
     - name: Upload ISO
       uses: actions/upload-artifact@v6
