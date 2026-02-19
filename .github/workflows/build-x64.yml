@@ -1,4 +1,4 @@
-name: Build ISO x64 (BIOS isolinux)
+name: Build ISO x64 (BIOS + UEFI + Framebuffer)
 
 on:
   workflow_dispatch:
@@ -14,22 +14,33 @@ jobs:
     - name: Install build dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential gcc genisoimage syslinux busybox curl xorriso
+        sudo apt-get install -y build-essential gcc genisoimage syslinux busybox curl \
+          libpng-dev zlib1g-dev grub-efi-amd64-bin xorriso mtools
 
     - name: Download kernel (bzImage)
       run: |
         mkdir -p system/boot
         curl -L -o system/boot/bzImage https://github.com/Jesusdio2/CultraOS/releases/download/Dev1/Image
 
-    - name: Compile static binary (init)
+    - name: Compile UI binary
       run: |
         mkdir -p build
-        gcc -static -O2 -Wall -Wextra src/init.c -o build/init
+        gcc -O2 -Wall -Wextra src/main.c src/RoundRectDrawable.c -o build/ui -lpng -lz
 
     - name: Generate initramfs
       run: |
-        mkdir -p initramfs/{bin,sbin,etc,proc,sys,dev}
-        cp build/init initramfs/bin/
+        mkdir -p initramfs/{bin,sbin,etc,proc,sys,dev,usr/share/sounds,src}
+        # init como script principal
+        cp /initramfs/init initramfs/init
+        chmod +x initramfs/init
+        # binario compilado
+        cp build/ui initramfs/bin/
+        # recursos adicionales
+        cp src/pointer.png initramfs/src/
+        cp src/Makefile initramfs/src/
+        cp src/RoundRectDrawable.c initramfs/src/
+        cp src/main.c initramfs/src/
+        cp /initramfs/usr/share/sounds/pixiedust.wav initramfs/usr/share/sounds/
         # añadir busybox y symlinks básicos
         cp /bin/busybox initramfs/bin/
         for cmd in sh mount ls; do ln -sf busybox initramfs/bin/$cmd; done
@@ -37,14 +48,33 @@ jobs:
 
     - name: Create ISO structure
       run: |
-        mkdir -p iso_root/boot
+        mkdir -p iso_root/boot/grub
         cp system/boot/bzImage iso_root/boot/
         cp initramfs.cpio.gz iso_root/boot/
+        # grub.cfg con framebuffer
+        cat > iso_root/boot/grub/grub.cfg << 'EOF'
+        insmod part_gpt
+        insmod part_msdos
+        insmod fat
+        insmod iso9660
+        insmod all_video
+        insmod gfxterm
+
+        set gfxpayload=keep
+        set gfxmode=1024x768
+        terminal_output gfxterm
+
+        menuentry "CultraOS (x64)" {
+            linux /boot/bzImage quiet splash
+            initrd /boot/initramfs.cpio.gz
+        }
+        EOF
+        # isolinux.cfg para BIOS
         cat > iso_root/isolinux.cfg << 'EOF'
         DEFAULT cultra
         LABEL cultra
           KERNEL /boot/bzImage
-          APPEND initrd=/boot/initramfs.cpio.gz console=ttyS0
+          APPEND initrd=/boot/initramfs.cpio.gz console=ttyS0 vga=normal
         EOF
 
     - name: Get isolinux.bin and ldlinux.c32
@@ -55,14 +85,32 @@ jobs:
         cp syslinux/usr/lib/syslinux/modules/bios/ldlinux.c32 iso_root/
         cp syslinux/usr/lib/ISOLINUX/isolinux.bin iso_root/
 
-    - name: Create ISO image
+    - name: Create EFI boot image
       run: |
-        genisoimage -R -J -l \
+        grub-mkimage -O x86_64-efi -o bootx64.efi -p /boot/grub \
+          part_gpt part_msdos fat iso9660 normal chain linux configfile \
+          gfxterm gfxterm_background gfxterm_menu efi_gop efi_uga all_video
+
+        dd if=/dev/zero of=efi.img bs=1M count=4
+        mkfs.vfat efi.img
+        mmd -i efi.img ::/EFI
+        mmd -i efi.img ::/EFI/BOOT
+        mcopy -i efi.img bootx64.efi ::/EFI/BOOT/BOOTX64.EFI
+
+    - name: Create hybrid ISO image
+      run: |
+        xorriso -as mkisofs \
+          -R -J -joliet-long \
+          -V "CULTRAOS" \
           -b isolinux.bin \
           -c boot.cat \
           -no-emul-boot -boot-load-size 4 -boot-info-table \
+          -eltorito-alt-boot \
+          -e efi.img \
+          -no-emul-boot \
+          -isohybrid-gpt-basdat \
           -o CultraOS-x64.iso \
-          iso_root
+          iso_root efi.img
 
     - name: Upload ISO
       uses: actions/upload-artifact@v6
