@@ -1,4 +1,3 @@
-// src/main.c
 #define _GNU_SOURCE
 #include <fcntl.h>
 #include <linux/fb.h>
@@ -12,6 +11,8 @@
 #include <sys/mman.h>
 #include <time.h>
 #include <unistd.h>
+
+#include "RoundRectDrawable.h"
 
 typedef struct {
     int fd;
@@ -154,8 +155,30 @@ int main() {
     int mx = fb.vinfo.xres / 2;
     int my = fb.vinfo.yres / 2;
 
-    clear(&fb, 0, 0, 0);
+    clear(&fb, 240, 240, 240); // fondo gris claro
 
+    // Simulación de framebuffer para RoundRectDrawable
+    Framebuffer fb_sim;
+    fb_sim.width = fb.vinfo.xres;
+    fb_sim.height = fb.vinfo.yres;
+    fb_sim.pixels = (uint32_t*)fb.fbp;
+
+    // Barra superior estilo título
+    RoundRectDrawable header = {8.0f, 4.0f, 0.0f, {100,149,237,255}}; // azul cornflower
+    draw_card(&fb_sim, 20, 20, fb.vinfo.xres - 40, 50, &header);
+
+    // Ventana principal blanca
+    RoundRectDrawable window = {12.0f, 6.0f, 0.0f, {255,255,255,255}};
+    draw_card(&fb_sim, 20, 80, fb.vinfo.xres - 40, fb.vinfo.yres - 100, &window);
+
+    // Ítems dentro de la ventana (simulan archivos/carpetas)
+    RoundRectDrawable item = {6.0f, 3.0f, 0.0f, {245,245,245,255}}; // gris claro
+    for (int i = 0; i < 5; i++) {
+        int y = 100 + i*60;
+        draw_card(&fb_sim, 40, y, fb.vinfo.xres - 80, 40, &item);
+    }
+
+    // Bucle principal con cursor
     for (;;) {
         struct timespec start, end;
         clock_gettime(CLOCK_MONOTONIC, &start);
@@ -178,10 +201,10 @@ int main() {
         if (mx > (int)fb.vinfo.xres - (int)ptr.w) mx = fb.vinfo.xres - ptr.w;
         if (my > (int)fb.vinfo.yres - (int)ptr.h) my = fb.vinfo.yres - ptr.h;
 
-        // Restaurar fondo debajo del cursor (negro simple)
+        // Restaurar fondo debajo del cursor (gris claro)
         for (unsigned py = 0; py < ptr.h; ++py)
             for (unsigned px = 0; px < ptr.w; ++px)
-                putpixel(&fb, mx + (int)px, my + (int)py, 0, 0, 0, 255);
+                putpixel(&fb, mx + (int)px, my + (int)py, 240, 240, 240, 255);
 
         // Dibujar puntero con alpha
         draw_image(&fb, &ptr, mx, my);
