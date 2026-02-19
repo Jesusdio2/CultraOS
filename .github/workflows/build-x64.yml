@@ -1,4 +1,4 @@
-name: Build ISO x64 + QEMU Screenshot
+name: Build ISO x64
 
 on:
   workflow_dispatch:
@@ -15,7 +15,7 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y build-essential gcc libpng-dev zlib1g-dev cpio curl \
-          grub-pc-bin grub-efi-amd64-bin xorriso mtools qemu-system-x86 imagemagick xvfb
+          grub-pc-bin grub-efi-amd64-bin xorriso mtools
 
     - name: Download kernel and initramfs from release
       run: |
@@ -76,24 +76,8 @@ jobs:
           -o CultraOS-x64.iso \
           iso-root
 
-    - name: Run QEMU and capture framebuffer
-      run: |
-        xvfb-run -a qemu-system-x86_64 \
-          -cdrom CultraOS-x64.iso \
-          -m 512 \
-          -boot d \
-          -device VGA \
-          -no-reboot \
-          -monitor stdio <<EOF
-        screendump qemu.ppm
-        quit
-        EOF
-        convert qemu.ppm qemu.png
-
-    - name: Upload artifacts
+    - name: Upload ISO
       uses: actions/upload-artifact@v6
       with:
-        name: CultraOS-build
-        path: |
-          CultraOS-x64.iso
-          qemu.png
+        name: CultraOS-x64
+        path: CultraOS-x64.iso
