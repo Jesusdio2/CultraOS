@@ -92,7 +92,7 @@ jobs:
           -display sdl
 
     - name: Upload ISO
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: CultraOS-iso-arm64
         path: CultraOS-arm64.iso
