@@ -1,119 +1,62 @@
-name: Build ISO x64 (BIOS + UEFI + Framebuffer)
+name: Build CultraOS (Debian Based)
 
 on:
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
-
+    runs-on: ubuntu-latest
     steps:
-    - name: Checkout source
-      uses: actions/checkout@v6
+    - name: Checkout
+      uses: actions/checkout@v4
 
-    - name: Install build dependencies
+    - name: Install Build Tools
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential gcc genisoimage syslinux busybox curl \
-          libpng-dev zlib1g-dev grub-efi-amd64-bin xorriso mtools
+        sudo apt-get install -y debootstrap squashfs-tools xorriso grub-pc-bin grub-efi-amd64-bin mtools libarchive-tools
 
-    - name: Download kernel (bzImage)
+    - name: Create Debian Base (The "Heart")
       run: |
-        mkdir -p system/boot
-        curl -L -o system/boot/bzImage https://github.com/Jesusdio2/CultraOS/releases/download/Dev1/Image
+        sudo debootstrap --variant=minbase --include=linux-image-amd64,systemd-sysv,kmod,busybox,libpng16-16 \
+          stable chroot_dir http://debian.org
+        # Aquí instalamos el corazón de Debian. El kernel oficial de Debian NO da Kernel Panic.
 
-    - name: Compile UI binary
+    - name: Inject Your UI & Config
       run: |
-        mkdir -p build
-        gcc -O2 -Wall -Wextra src/main.c src/RoundRectDrawable.c -o build/ui -lpng -lz
+        # Compila tu UI (puedes usar un contenedor o instalar librerías antes)
+        sudo apt-get install -y libpng-dev zlib1g-dev gcc
+        gcc -O2 src/main.c src/RoundRectDrawable.c -o build/ui -lpng -lz
+        
+        # Copia tu binario al sistema Debian
+        sudo cp build/ui chroot_dir/usr/bin/cultra-ui
+        
+        # Configura que tu UI arranque al iniciar (estilo Systemd)
+        sudo mkdir -p chroot_dir/etc/systemd/system/getty@tty1.service.d/
+        echo -e "[Service]\nExecStart=\nExecStart=-/usr/bin/cultra-ui\nStandardInput=tty\nStandardOutput=tty" | sudo tee chroot_dir/etc/systemd/system/getty@tty1.service.d/override.conf
 
-    - name: Generate initramfs
+    - name: Create Compressed Filesystem (SquashFS)
       run: |
-        mkdir -p initramfs/{bin,sbin,etc,proc,sys,dev,usr/share/sounds,src}
-        # init como script principal
-        cp /initramfs/init initramfs/init
-        chmod +x initramfs/init
-        # binario compilado
-        cp build/ui initramfs/bin/
-        # recursos adicionales
-        cp src/pointer.png initramfs/src/
-        cp src/Makefile initramfs/src/
-        cp src/RoundRectDrawable.c initramfs/src/
-        cp src/main.c initramfs/src/
-        cp /initramfs/usr/share/sounds/pixiedust.wav initramfs/usr/share/sounds/
-        # añadir busybox y symlinks básicos
-        cp /bin/busybox initramfs/bin/
-        for cmd in sh mount ls; do ln -sf busybox initramfs/bin/$cmd; done
-        cd initramfs && find . | cpio -o -H newc | gzip > ../initramfs.cpio.gz
+        mkdir -p image/live
+        sudo mksquashfs chroot_dir image/live/filesystem.squashfs -comp xz
 
-    - name: Create ISO structure
+    - name: Prepare Bootloader (GRUB)
       run: |
-        mkdir -p iso_root/boot/grub
-        cp system/boot/bzImage iso_root/boot/
-        cp initramfs.cpio.gz iso_root/boot/
-        # grub.cfg con framebuffer
-        cat > iso_root/boot/grub/grub.cfg << 'EOF'
-        insmod part_gpt
-        insmod part_msdos
-        insmod fat
-        insmod iso9660
-        insmod all_video
-        insmod gfxterm
+        mkdir -p image/boot/grub
+        # Copiamos el kernel y el initrd que generó Debian automáticamente
+        sudo cp chroot_dir/boot/vmlinuz-* image/boot/vmlinuz
+        sudo cp chroot_dir/boot/initrd.img-* image/boot/initrd
+        
+        echo 'menuentry "CultraOS Debian-Base" {
+            linux /boot/vmlinuz boot=live quiet splash
+            initrd /boot/initrd
+        }' > image/boot/grub/grub.cfg
 
-        set gfxpayload=keep
-        set gfxmode=1024x768
-        terminal_output gfxterm
-
-        menuentry "CultraOS (x64)" {
-            linux /boot/bzImage quiet splash
-            initrd /boot/initramfs.cpio.gz
-        }
-        EOF
-        # isolinux.cfg para BIOS
-        cat > iso_root/isolinux.cfg << 'EOF'
-        DEFAULT cultra
-        LABEL cultra
-          KERNEL /boot/bzImage
-          APPEND initrd=/boot/initramfs.cpio.gz console=ttyS0 vga=normal
-        EOF
-
-    - name: Get isolinux.bin and ldlinux.c32
+    - name: Create ISO
       run: |
-        mkdir syslinux
-        apt-get download syslinux-common
-        dpkg-deb -x *.deb syslinux
-        cp syslinux/usr/lib/syslinux/modules/bios/ldlinux.c32 iso_root/
-        cp syslinux/usr/lib/ISOLINUX/isolinux.bin iso_root/
-
-    - name: Create EFI boot image
-      run: |
-        grub-mkimage -O x86_64-efi -o bootx64.efi -p /boot/grub \
-          part_gpt part_msdos fat iso9660 normal chain linux configfile \
-          gfxterm gfxterm_background gfxterm_menu efi_gop efi_uga all_video
-
-        dd if=/dev/zero of=efi.img bs=1M count=4
-        mkfs.vfat efi.img
-        mmd -i efi.img ::/EFI
-        mmd -i efi.img ::/EFI/BOOT
-        mcopy -i efi.img bootx64.efi ::/EFI/BOOT/BOOTX64.EFI
-
-    - name: Create hybrid ISO image
-      run: |
-        xorriso -as mkisofs \
-          -R -J -joliet-long \
-          -V "CULTRAOS" \
-          -b isolinux.bin \
-          -c boot.cat \
-          -no-emul-boot -boot-load-size 4 -boot-info-table \
-          -eltorito-alt-boot \
-          -e efi.img \
-          -no-emul-boot \
-          -isohybrid-gpt-basdat \
-          -o CultraOS-x64.iso \
-          iso_root efi.img
+        grub-mkrescue -o CultraOS-Debian.iso image
 
     - name: Upload ISO
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v4
       with:
-        name: CultraOS-x64
-        path: CultraOS-x64.iso
+        name: CultraOS-ISO
+        path: CultraOS-Debian.iso
